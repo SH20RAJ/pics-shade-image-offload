@@ -1,9 +1,14 @@
 <?php
 /*
 Plugin Name: Pics Shade Image Offload + Optimize + Resize
+Plugin URI: https://docs.pics.shade.cool/wordpress-plugin
 Description: Offload media from WordPress to Pics Shade - Image Hosting Made Easy.
 Version: 1.0
-Author: sh20raj
+Author: Shashwat Raj
+Author URI: https://shade.cool
+License: GPL2
+Text Domain: pics-shade-media-offload
+Domain Path: /languages
 */
 
 if (!defined('ABSPATH')) {
@@ -31,7 +36,7 @@ function psio_settings_init() {
     register_setting('psio_settings', 'psio_delete_after_upload');
     register_setting('psio_settings', 'psio_use_optimized_link');
     register_setting('psio_settings', 'psio_default_tags');
-    
+
     add_settings_section('psio_section', __('API Settings', 'psio'), null, 'psio_settings');
 
     add_settings_field('psio_api_key', __('Pics Shade API Key', 'psio'), 'psio_api_key_render', 'psio_settings', 'psio_section');
@@ -43,33 +48,33 @@ function psio_settings_init() {
 
 function psio_api_key_render() {
     $api_key = get_option('psio_api_key');
-    echo "<input type='text' name='psio_api_key' value='$api_key' />";
+    echo '<input type="text" name="psio_api_key" value="' . esc_attr($api_key) . '" />';
 }
 
 function psio_delete_after_upload_render() {
     $delete_after_upload = get_option('psio_delete_after_upload');
     $checked = $delete_after_upload ? 'checked' : '';
-    echo "<input type='checkbox' name='psio_delete_after_upload' $checked />";
+    echo '<input type="checkbox" name="psio_delete_after_upload" ' . esc_attr($checked) . ' />';
 }
 
 function psio_use_optimized_link_render() {
     $use_optimized_link = get_option('psio_use_optimized_link');
     $checked = $use_optimized_link ? 'checked' : '';
-    echo "<input type='checkbox' name='psio_use_optimized_link' $checked />";
+    echo '<input type="checkbox" name="psio_use_optimized_link" ' . esc_attr($checked) . ' />';
 }
 
 function psio_default_tags_render() {
     $default_tags = get_option('psio_default_tags');
-    echo "<input type='text' name='psio_default_tags' value='$default_tags' />";
+    echo '<input type="text" name="psio_default_tags" value="' . esc_attr($default_tags) . '" />';
 }
 
 function psio_docs_links_render() {
-    echo '<p><a href="https://docs.pics.shade.cool/api-reference/get-api-key" target="_blank">Get API Key</a></p>';
-    echo '<p><a href="https://docs.pics.shade.cool/api-reference/dashboard" target="_blank">Track Usage on Dashboard</a></p>';
-    echo '<p><a href="https://docs.pics.shade.cool/" target="_blank">API Documentation</a></p>';
-    echo '<p><a href="https://docs.pics.shade.cool/terms-of-service" target="_blank">Terms of Service</a></p>';
-    echo '<p><a href="https://docs.pics.shade.cool/privacy-policy" target="_blank">Privacy Policy</a></p>';
-    echo '<p><a href="https://pics.shade.cool" target="_blank">Visit PicsShade</a></p>';
+    echo '<p><a href="https://docs.pics.shade.cool/api-reference/get-api-key" target="_blank" rel="noopener noreferrer">Get API Key</a></p>';
+    echo '<p><a href="https://docs.pics.shade.cool/api-reference/dashboard" target="_blank" rel="noopener noreferrer">Track Usage on Dashboard</a></p>';
+    echo '<p><a href="https://docs.pics.shade.cool/" target="_blank" rel="noopener noreferrer">API Documentation</a></p>';
+    echo '<p><a href="https://docs.pics.shade.cool/terms-of-service" target="_blank" rel="noopener noreferrer">Terms of Service</a></p>';
+    echo '<p><a href="https://docs.pics.shade.cool/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a></p>';
+    echo '<p><a href="https://pics.shade.cool" target="_blank" rel="noopener noreferrer">Visit PicsShade</a></p>';
 }
 
 function psio_settings_page() {
@@ -123,7 +128,7 @@ function psio_handle_upload($upload) {
 
             if ($delete_after_upload) {
                 // Delete the local file
-                unlink($image_path);
+                wp_delete_file($image_path);
             }
         }
     }
@@ -147,17 +152,16 @@ function psio_upload_to_pics_shade($image_path, $api_key, $default_tags) {
         'Authorization: Bearer ' . $api_key,
     ];
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    $response = wp_safe_remote_post($url, [
+        'headers' => $headers,
+        'body' => $data,
+    ]);
 
-    $response = curl_exec($ch);
-    curl_close($ch);
+    if (is_wp_error($response)) {
+        return false;
+    }
 
-    $result = json_decode($response, true);
+    $result = json_decode(wp_remote_retrieve_body($response), true);
 
     if (get_option('psio_use_optimized_link')) {
         return $result['cdn'] ?? false;
